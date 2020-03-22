@@ -1,0 +1,229 @@
+---
+title: "STAT 5703 Homework 2 Exercise 2"
+author: "Shijie He(sh3975), Yunjun Xia(yx2569), Shuyu Huang(sh3967)"
+date: "3/1/2020"
+output: pdf_document
+---
+
+## Part 1
+
+```{r}
+scores = read.delim("scores.txt", sep = " ")
+```
+
+#### (a)
+
+```{r}
+(cov_a <- cov(scores, use="complete.obs"))
+```
+
+#### (b)
+
+```{r}
+(cov_b <- cov(scores, use="pairwise.complete.obs"))
+```
+
+#### (c)
+
+```{r}
+scores_imp <- scores
+for (i in 1:dim(scores)[2]){
+  ind <- which(is.na(scores[,i]))
+  scores_imp[ind, i] <- mean(na.omit(scores[,i]))
+}
+(cov_c <- cov(scores_imp))
+```
+
+#### (d)
+
+```{r}
+c <- matrix(0, nrow = dim(scores)[2], ncol = dim(scores)[2])
+for (i in 1:1000){
+  n <- dim(scores)[1]
+  new_ind <- sample(1:n, size = n, replace = TRUE)
+  scores_boot <- scores[new_ind,]
+  for (j in 1:dim(scores)[2]){
+    ind <- which(is.na(scores_boot[,j]))
+    scores_boot[ind, j] <- mean(na.omit(scores_boot[,j]))
+  }
+  c <- c + cov(scores_boot)
+}
+(cov_d <- c/1000)
+```
+
+#### (e)
+
+```{r include=FALSE}
+library(TestDataImputation)
+set.seed(1)
+```
+
+```{r message=FALSE, warning=FALSE, results="hide"}
+scores_em <- EMimpute(scores, max.score = 1000)
+```
+
+```{r}
+(cov_e <- cov(scores_em))
+```
+
+Using imputation with and without bootstrap gives smaller covariance value compared to the rest. 
+
+## Part 2
+
+The asymptotic distribution for $\hat\lambda_1$ is:
+
+$$\sqrt{n} (\log \hat\lambda_1 - \log \lambda_1) \xrightarrow[n \rightarrow \infty]{\mathcal{D}} \mathcal{N}(0,2)$$
+
+Use delta method, we get:
+
+$$\sqrt{n} (\hat\lambda_1 - \lambda_1) \xrightarrow[n \rightarrow \infty]{\mathcal{D}} \mathcal{N}(0,2\lambda_1^2)$$
+
+Thus,
+
+$$\frac{\sqrt{n} (\hat\lambda_1 - \lambda_1)}{\sqrt{2}\lambda_1} \xrightarrow[n \rightarrow \infty]{\mathcal{D}} \mathcal{N}(0,1)$$
+
+The confidence interval for $\lambda_1$ is:
+
+\begin{align*}
+\mathbb{P}[-z_{1-\alpha/2} < \frac{\sqrt{n} (\hat\lambda_1 - \lambda_1)}{\sqrt{2}\lambda_1} < z_{1-\alpha/2}] &= 1 - \alpha \\
+\mathbb{P}[-z_{1-\alpha/2} \sqrt{\frac{2}{n}}\lambda_1 < \hat\lambda_1 - \lambda_1 < z_{1-\alpha/2} \sqrt{\frac{2}{n}}\lambda_1] &= 1 - \alpha \\
+\mathbb{P}[(-z_{1-\alpha/2} \sqrt{\frac{2}{n}} + 1) \lambda_1 < \hat\lambda_1 < (z_{1-\alpha/2} \sqrt{\frac{2}{n}} + 1) \lambda_1] &= 1 - \alpha \\
+\mathbb{P}[\frac{\hat\lambda_1}{z_{1-\alpha/2} \sqrt{\frac{2}{n}} + 1} < \lambda_1 < \frac{\hat\lambda_1}{-z_{1-\alpha/2} \sqrt{\frac{2}{n}} + 1}] &= 1 - \alpha 
+\end{align*}
+
+Thus,
+
+$$\lambda_1 \in (\frac{\hat\lambda_1}{z_{1-\alpha/2} \sqrt{\frac{2}{n}} + 1}, \frac{\hat\lambda_1}{-z_{1-\alpha/2} \sqrt{\frac{2}{n}} + 1})$$
+
+#### (a)
+
+Here, we set the significance level for confidence interval to be 0.05.
+
+```{r}
+z <- qnorm(0.975)
+n <- dim(scores)[1]
+lambda_a <- max(eigen(cov_a)$values)
+lambda_a_low <- lambda_a/(z*sqrt(2/n)+1)
+lambda_a_high <- lambda_a/(-z*sqrt(2/n)+1)
+cat(paste0("The confidence interval for eigenvalue of complete case analysis is: (", 
+           round(lambda_a_low, 3), ", ", round(lambda_a_high, 3), ")."))
+```
+
+#### (b)
+
+```{r}
+lambda_b <- max(eigen(cov_b)$values)
+lambda_b_low <- lambda_b/(z*sqrt(2/n)+1)
+lambda_b_high <- lambda_b/(-z*sqrt(2/n)+1)
+cat(paste0("The confidence interval for eigenvalue of available case analysis is: (", 
+           round(lambda_b_low, 3), ", ", round(lambda_b_high, 3), ")."))
+```
+
+#### (c)
+
+```{r}
+lambda_c <- max(eigen(cov_c)$values)
+lambda_c_low <- lambda_c/(z*sqrt(2/n)+1)
+lambda_c_high <- lambda_c/(-z*sqrt(2/n)+1)
+cat(paste0("The confidence interval for eigenvalue of mean imputation is: (", 
+           round(lambda_c_low, 3), ", ", round(lambda_c_high, 3), ")."))
+```
+
+#### (d)
+
+```{r}
+lambda_d <- max(eigen(cov_d)$values)
+lambda_d_low <- lambda_d/(z*sqrt(2/n)+1)
+lambda_d_high <- lambda_d/(-z*sqrt(2/n)+1)
+cat(paste0("The confidence interval for eigenvalue of mean imputation with bootstrap is: (", 
+           round(lambda_d_low, 3), ", ", round(lambda_d_high, 3), ")."))
+```
+
+#### (e)
+
+```{r}
+lambda_e <- max(eigen(cov_e)$values)
+lambda_e_low <- lambda_e/(z*sqrt(2/n)+1)
+lambda_e_high <- lambda_e/(-z*sqrt(2/n)+1)
+cat(paste0("The confidence interval for eigenvalue of EM-algorithm is: (", 
+           round(lambda_e_low, 3), ", ", round(lambda_e_high, 3), ")."))
+```
+
+Confidence interval are wider and larger for complete case, available case and EM-algorithm. This might be because the covariance matrix and different for these cases.
+
+## Part 3
+
+```{r message=FALSE, warning=FALSE}
+library(SMPracticals)
+cov_comp <- cov(mathmarks)
+
+lambda_comp <- max(eigen(cov_comp)$values)
+lambda_comp_low <- lambda_comp/(z*sqrt(2/n)+1)
+lambda_comp_high <- lambda_comp/(-z*sqrt(2/n)+1)
+cat(paste0("The confidence interval for eigenvalue of the complete data is: (", 
+           round(lambda_comp_low, 3), ", ", round(lambda_comp_high, 3), ")."))
+```
+
+EM-algorithm gives the most accurate estimation of the eigenvalue. Imputation gives relatively worst estimation. The reason might be because the data has few rows so that the mean imputation is not quite general in our case.
+
+## Part 4
+
+The log-likelihood function for this model is:
+
+$$\ell_i(\boldsymbol\mu, \boldsymbol\Sigma \mid \mathbf{x_i}) = -\frac{d}{2}\log(2\pi)-\frac{1}{2}\log|\boldsymbol\Sigma|-\frac{1}{2}(\mathbf{x}_i-\boldsymbol\mu)^T \boldsymbol\Sigma^{-1}(\mathbf{x}_i-\boldsymbol\mu)$$
+
+We need to first get the expected value of this log-likelihood function and then figure out the optimal value for the parameters $\boldsymbol\mu$ and $\boldsymbol\Sigma$ that makes the expected value maximum. We use MLE to get the maximum value. 
+
+We first take a look at the partial derivative respect to $\boldsymbol\mu$ and $\boldsymbol\Sigma$:
+
+$$\frac{\partial}{\partial \boldsymbol\mu} \ell_i(\boldsymbol\mu, \boldsymbol\Sigma \mid \mathbf{x}_i) = -\boldsymbol\Sigma^{-1}(\mathbf{x}_i - \boldsymbol\mu)$$
+
+For the derivative of $\boldsymbol\Sigma$, we will take the derivative with respect to $\boldsymbol\Sigma^{-1}$ instead.
+
+$$\frac{\partial}{\partial \boldsymbol\Sigma^{-1}} \ell_i(\boldsymbol\mu, \boldsymbol\Sigma \mid \mathbf{x}_i) = \frac{1}{2}\boldsymbol\Sigma - \frac{1}{2}(\mathbf{x}_i - \boldsymbol\mu)(\mathbf{x}_i - \boldsymbol\mu)^T$$
+
+Thus, we need the conditional expectation $\mathbb{E}[\mathbf{X_i} \mid \mathbf{X}_{im}]$ and $\mathbb{E}[(\mathbf{X_i}-\boldsymbol\mu)^T(\mathbf{X_i}-\boldsymbol\mu) \mid \mathbf{X}_{im}]$ for E-step.
+
+\textbf{E-step:}
+
+$$\mathbb{E}[\mathbf{X_i} \mid \mathbf{X}_{im}, \boldsymbol\mu^{(k)}, \boldsymbol\Sigma^{(k)}] = ((\hat{\mathbf X}_{im})^T, (\hat{\mathbf X}_{io}^{(k)})^T)^T$$
+
+, where $\hat{\mathbf{X}}_{io} = \mathbf{X}_{io}$ and
+
+$$\hat{\mathbf{X}}_{im}^{(k)} = E[\mathbf{X}_{im} \mid \mathbf{X}_{io}, \boldsymbol{\mu}^{k}, \boldsymbol{\Sigma}^{k}] = \boldsymbol\mu_{im}^{(k)} + \boldsymbol\Sigma_{imo}^{(k)}(\boldsymbol\Sigma_{ioo}^{(k)})^{-1}(\mathbf{X}_{io}-\boldsymbol\mu_{io}^{k})$$
+
+\begin{align*}
+\mathbb{E}[(\mathbf{X_i}-\boldsymbol\mu)(\mathbf{X_i}-\boldsymbol\mu)^T \mid \mathbf{X}_{im}, \boldsymbol\mu^{(k)}, \boldsymbol\Sigma^{(k)}] 
+&= \mathbb{E} \begin{bmatrix}
+(\mathbf{X}_{io} - \boldsymbol\mu_{io}^{(k)})(\mathbf{X}_{io} - \boldsymbol\mu_{io}^{(k)})^T & (\mathbf{X}_{io} - \boldsymbol\mu_{io}^{(k)})(\mathbf{X}_{im} - \boldsymbol\mu_{im}^{(k)})^T\\
+(\mathbf{X}_{im} - \boldsymbol\mu_{im}^{(k)})(\mathbf{X}_{io} - \boldsymbol\mu_{io}^{(k)})^T & (\mathbf{X}_{im} - \boldsymbol\mu_{im}^{(k)})(\mathbf{X}_{im} - \boldsymbol\mu_{im}^{(k)})^T\\
+\end{bmatrix} \\ 
+&= \begin{bmatrix}
+(\hat{\mathbf{X}}_{io} - \boldsymbol\mu_{io}^{(k)})(\hat{\mathbf{X}}_{io} - \boldsymbol\mu_{io}^{(k)})^T & (\hat{\mathbf{X}}_{io} - \boldsymbol\mu_{io}^{(k)})(\hat{\mathbf{X}}_{im} - \boldsymbol\mu_{im}^{(k)})^T\\
+(\hat{\mathbf{X}}_{im} - \boldsymbol\mu_{im}^{(k)})(\hat{\mathbf{X}}_{io} - \boldsymbol\mu_{io}^{(k)})^T & (\hat{\mathbf{X}}_{im} - \boldsymbol\mu_{im}^{(k)})(\hat{\mathbf{X}}_{im} - \boldsymbol\mu_{im}^{(k)})^T + \mathbf{C}_{imm}\\
+\end{bmatrix} 
+\end{align*}
+
+where $\mathbf{C}_{imm}^{(k)} = \boldsymbol\Sigma_{imm}^{(k)} - \boldsymbol\Sigma_{imo}^{(k)}(\boldsymbol\Sigma_{ioo}^{(k)})^{-1}\boldsymbol\Sigma_{iom}^{(k)}$
+
+\textbf{M-step:}
+
+For $\boldsymbol\mu^{(k+1)}$:
+
+$$\frac{\partial}{\partial \boldsymbol\mu} \ell_i(\boldsymbol\mu, \boldsymbol\Sigma \mid \mathbf{X}_i) = -\boldsymbol\Sigma^{-1}(\mathbf{X}_i - \boldsymbol\mu)$$
+
+Thus,
+
+$$\frac{\partial}{\partial \boldsymbol\mu} \ell(\boldsymbol\mu, \boldsymbol\Sigma \mid \mathbf{X}) = \sum\limits_{i=1}^n -\boldsymbol\Sigma^{-1}(\mathbf{X}_i - \boldsymbol\mu) = 0$$
+
+This gives that $\boldsymbol\mu^{(k+1)}$: $\sum\limits_{i=1}^n (\hat{\mathbf{X}}_i - \boldsymbol\mu) = 0$.
+
+For $\boldsymbol\Sigma^{(k+1)}$:
+
+$$\frac{\partial}{\partial \boldsymbol\Sigma^{-1}} \ell_i(\boldsymbol\mu, \boldsymbol\Sigma \mid \mathbf{X}_i) = \frac{1}{2}\boldsymbol\Sigma - \frac{1}{2}(\mathbf{X}_i - \boldsymbol\mu)(\mathbf{X}_i - \boldsymbol\mu)^T$$
+
+Thus, 
+
+$$\frac{\partial}{\partial \boldsymbol\Sigma^{-1}} \ell(\boldsymbol\mu, \boldsymbol\Sigma \mid \mathbf{X}) = \sum\limits_{i=1}^n \frac{1}{2}\boldsymbol\Sigma - \frac{1}{2}(\mathbf{X}_i - \boldsymbol\mu)(\mathbf{X}_i - \boldsymbol\mu)^T = 0$$
+
+This gives $\boldsymbol\Sigma^{(k+1)}$: $\sum\limits_{i=1}^n (\boldsymbol\Sigma - (\hat{\mathbf{X}}_i - \boldsymbol\mu)(\hat{\mathbf{X}}_i - \boldsymbol\mu)^T - \mathbf{C}_i) = 0$, where $\mathbf{C}_{imm} = \boldsymbol\Sigma_{imm}^{(k)} - \boldsymbol\Sigma_{imo}^{(k)}(\boldsymbol\Sigma_{ioo}^{(k)})^{-1}\boldsymbol\Sigma_{iom}^{(k)}$ and all other entries to be 0.
